@@ -1,0 +1,188 @@
+---
+title: "ggplot workshop"
+format: html
+server: shiny
+---
+
+Part A: GGPLOT2 - THE GRAMMAR OF GRAPHICS
+Let's go over a few basics first.
+
+```{r}
+library(stringr)
+library(ggplot2)
+library(dplyr)
+```
+
+
+```{r}
+cars = read.csv("cars.csv")
+```
+
+Step 1 - Initialize:
+
+```{r}
+ggplot()
+```
+
+Step 2 - Data:
+
+```{r}
+ggplot(data = cars)
+```
+
+Step 3 - Aesthetic Mapping:
+
+```{r}
+ggplot(data = cars, 
+       mapping = aes(x = speed, y = distance))
+```
+
+Step 4 - Geometry:
+
+```{r}
+ggplot(data = cars, 
+       mapping = aes(x = speed, y = distance)) + 
+  geom_point()
+```
+
+Step 5 - Labels:
+
+```{r}
+ggplot(data = cars, 
+       mapping = aes(x = speed, y = distance)) + 
+  geom_point() + 
+  labs ( x = "Speed",
+         y = "Distance",
+         title = "Scatterplot of speed v/s distance",
+         caption = "Speed vs Distance")
+```
+
+PART 2: Create your own, print-ready data art!
+
+```{r}
+# ============================================================================
+# INPUT YOUR TITLE AND TEXT HERE
+# ============================================================================
+
+my_title <- "I Must Betray You"
+
+my_text <- "An old woman is fast asleep when she hears a knock at the door.
+Who is it? she whispers, terrified.
+It is death, the voice answers.
+Oh, good. I thought it might be the Securitate."
+```
+
+```{r}
+# ============================================================================
+# SETTINGS
+# ============================================================================
+
+chars_per_row <- 20 # Change this as per the text you decide to select
+```
+
+```{r}
+# ============================================================================
+# COLOR PALETTE - Select your own :)
+# Here's a great website to get various palettes and hex codes - 
+# https://7colorhunt.co/
+# ============================================================================
+
+letter_colors <- c(
+  a = "red", b = "#4ECDC4", c = "#45B7D1", d = "#FFA07E", e = "#98D8C8",
+  f = "#6C5CE7", g = "#FDCB6E", h = "#E17055", i = "cyan", j = "#A29BFE",
+  k = "#00B894", l = "#FFEAA7", m = "#DFE6E9", n = "#FF7675", o = "#FD79A8",
+  p = "blue", q = "#6C5CE7", r = "#00B894", s = "#0984E3", t = "#E17055",
+  u = "#A29BFE", v = "#55EFC4", w = "green", x = "pink", y = "orange",
+  z = "#636E72"
+)
+```
+
+
+```{r}
+# ============================================================================
+# PROCESS TITLE 
+# ============================================================================
+
+title_words <- strsplit(tolower(my_title), " ")[[1]]
+title_chars_with_gaps <- c()
+
+for (word in title_words) {
+  word_chars <- strsplit(word, "")[[1]]
+  word_chars <- word_chars[word_chars %in% letters]
+  title_chars_with_gaps <- c(title_chars_with_gaps, word_chars)
+  if (word != title_words[length(title_words)]) {
+    title_chars_with_gaps <- c(title_chars_with_gaps, " ")
+  }
+}
+
+title_data <- data.frame(
+  character = title_chars_with_gaps,
+  position = 1:length(title_chars_with_gaps)
+) %>%
+  filter(character != " ") %>%
+  mutate(
+    title_start = (chars_per_row - max(position)) / 2,
+    row = 1,
+    col = position + title_start
+  )
+
+# ============================================================================
+# PROCESS TEXT
+# ============================================================================
+
+paragraphs <- strsplit(my_text, "\n\n")[[1]]
+text_data_list <- list()
+current_row <- 4
+
+for (para in paragraphs) {
+  para_chars <- para %>%
+    tolower() %>%
+    str_replace_all("[^a-z ]", "") %>%
+    strsplit("") %>%
+    unlist()
+  
+  para_data <- data.frame(
+    character = para_chars,
+    position = 1:length(para_chars)
+  ) %>%
+    filter(character != " ") %>%
+    mutate(
+      para_row = ceiling(position / chars_per_row),
+      row = para_row + current_row - 1,
+      col = ((position - 1) %% chars_per_row) + 1
+    )
+  
+  text_data_list[[length(text_data_list) + 1]] <- para_data
+  current_row <- max(para_data$row) + 3
+}
+
+text_data <- bind_rows(text_data_list)
+```
+
+
+```{r}
+# ============================================================================
+# CREATE VISUALIZATION
+# ============================================================================
+
+text_art <- ggplot() +
+  geom_point(data = title_data, aes(x = col, y = -row, color = character), 
+             size = 13, shape = 15) +
+  geom_point(data = text_data, aes(x = col, y = -row, color = character), 
+             size = 9, shape = 15) +
+  scale_color_manual(values = letter_colors) +
+  coord_equal() +
+  theme_void() +
+  theme(
+    legend.position = "none",
+    plot.margin = margin(30, 30, 30, 30)
+  )
+
+print(text_art)
+```
+
+
+```{r}
+ggsave("i_must_betray_you.png", text_art, width = 12, height = 10, dpi = 300, bg = "white")
+```
+
